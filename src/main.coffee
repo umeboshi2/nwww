@@ -17,14 +17,35 @@ UseMiddleware = false or process.env.__DEV_MIDDLEWARE__ is 'true'
 PORT = process.env.NODE_PORT or 8081
 HOST = process.env.NODE_IP or 'localhost'
 
+
+dependency_section = tc.renderable (root, name, dep) ->
+  tc.li ->
+    href = path.join root, name
+    tc.a href:href, name
+    if dep?.dependencies
+      #console.log root, 'node_modules', name
+      #nroot = path.join root, 'node_modules', name
+      nroot = path.join href, 'node_modules'
+      #console.log "NROOT", nroot
+      tc.ul ->
+        for ndep of dep.dependencies
+          dirname = path.join nroot, ndep
+          if fs.existsSync dirname
+            s = fs.statSync dirname
+            if s.isDirectory()
+              dependency_section nroot, ndep, dep.dependencies[ndep]
+          else
+            dependency_section '/', ndep, dep.dependencies[ndep]
+            
 main_template = tc.renderable (npmls) ->
   tc.doctype()
   tc.html ->
     tc.head
     tc.body ->
-      for dep of npmls.dependencies
-        tc.div ->
-          tc.a href:"/#{dep}", dep
+      tc.ul ->
+        for dep of npmls.dependencies
+          dependency_section "/", dep, npmls.dependencies[dep]
+
 
 # create express app 
 app = express()
@@ -52,7 +73,6 @@ childProcess.execFile 'npm', ['ls', '--json'], (err, stdout, stdin) ->
     else if filename.endsWith '.js'
       # FIXME include css in response
       converted = Prism.highlight data, Prism.languages.javascript
-      console.log converted
     res.send converted
 
 
