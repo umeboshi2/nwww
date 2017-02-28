@@ -9,6 +9,7 @@ serveIndex = require 'serve-index'
 marked = require 'marked'
 Prism = require 'prismjs'
 tc = require 'teacup'
+shell = require 'shelljs'
 
 # Set the default environment to be `development`
 process.env.NODE_ENV = process.env.NODE_ENV or 'development'
@@ -21,19 +22,29 @@ HOST = process.env.NODE_IP or 'localhost'
 dependency_section = tc.renderable (root, name, dep) ->
   tc.li ->
     href = path.join root, name
-    tc.a href:href, name
+    lbl = "#{name}"
+    if dep?.version
+      lbl = "#{name}  (#{dep.version})"
+    tc.a href:href, lbl
+    if dep?.repository
+      #console.log dep.repository
+      tc.text '   '
+      url = undefined
+      if dep.repository?.url
+        url = dep.repository.url
+      else if dep.repository?.repository
+        url = dep.repository.repository
+      if url?
+        end = url.split(':')[1]
+        url = "https://#{end}"
+        tc.a href:url, '(repo)'
     if dep?.dependencies
-      #console.log root, 'node_modules', name
-      #nroot = path.join root, 'node_modules', name
       nroot = path.join href, 'node_modules'
-      #console.log "NROOT", nroot
       tc.ul ->
         for ndep of dep.dependencies
           dirname = path.join nroot, ndep
-          if fs.existsSync dirname
-            s = fs.statSync dirname
-            if s.isDirectory()
-              dependency_section nroot, ndep, dep.dependencies[ndep]
+          if shell.test '-d', dirname
+            dependency_section nroot, ndep, dep.dependencies[ndep]
           else
             dependency_section '/', ndep, dep.dependencies[ndep]
             
@@ -50,11 +61,13 @@ main_template = tc.renderable (npmls) ->
 # create express app 
 app = express()
 
-# get dependency tree
-childProcess.execFile 'npm', ['ls', '--json'], (err, stdout, stdin) ->
-  if (err)
-    throw err
-  lsdir = JSON.parse stdout.toString()
+output = ''
+proc = childProcess.spawn 'npm', ['ls', '--long', '--json']
+proc.stdout.on 'data', (data) ->
+   output += data.toString()
+
+proc.on 'close', (returncode) ->
+  lsdir = JSON.parse output
   app.get '/', (req, res) ->
     res.send main_template lsdir
 
@@ -62,9 +75,7 @@ childProcess.execFile 'npm', ['ls', '--json'], (err, stdout, stdin) ->
   app.use '/', serveIndex './node_modules'
     
   app.get '/*', (req, res, next) ->
-    #console.log "req.params", req.params
     filename = req.params[0]
-    #console.log "FILENAME", filename
     filename = path.join 'node_modules', filename
     data = fs.readFileSync(filename).toString()
     converted = data
@@ -74,7 +85,6 @@ childProcess.execFile 'npm', ['ls', '--json'], (err, stdout, stdin) ->
       # FIXME include css in response
       converted = Prism.highlight data, Prism.languages.javascript
     res.send converted
-
 
   server = http.createServer app
   server.listen PORT, HOST, ->

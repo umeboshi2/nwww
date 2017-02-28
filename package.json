@@ -27,6 +27,7 @@
     "marked": "^0.3.6",
     "prismjs": "^1.6.0",
     "serve-index": "^1.8.0",
+    "shelljs": "^0.7.6",
     "teacup": "^2.0.0"
   }
 }
