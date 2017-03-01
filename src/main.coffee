@@ -10,6 +10,9 @@ marked = require 'marked'
 Prism = require 'prismjs'
 tc = require 'teacup'
 shell = require 'shelljs'
+favicon = require 'serve-favicon'
+
+pages = require './pages'
 
 # Set the default environment to be `development`
 process.env.NODE_ENV = process.env.NODE_ENV or 'development'
@@ -27,7 +30,6 @@ dependency_section = tc.renderable (root, name, dep) ->
       lbl = "#{name}  (#{dep.version})"
     tc.a href:href, lbl
     if dep?.repository
-      #console.log dep.repository
       tc.text '   '
       url = undefined
       if dep.repository?.url
@@ -60,6 +62,7 @@ main_template = tc.renderable (npmls) ->
 
 # create express app 
 app = express()
+app.use favicon path.join __dirname, '../assets/favicon.ico'
 
 output = ''
 proc = childProcess.spawn 'npm', ['ls', '--long', '--json']
@@ -67,14 +70,37 @@ proc.stdout.on 'data', (data) ->
    output += data.toString()
 
 proc.on 'close', (returncode) ->
-  lsdir = JSON.parse output
-  app.get '/', (req, res) ->
-    res.send main_template lsdir
+  app.get '/', pages.make_page 'index'
 
+  lsdir = JSON.parse output
+
+  app.get '/api/0/modules', (req, res) ->
+    #res.send main_template lsdir
+    res.json lsdir
+
+  app.get '/api/0/module/readme/:name', (req, res) ->
+    name = req.params.name
+    data = lsdir.dependencies[name]
+    mpath = data.path
+    #pdir = fs.readDirSync mpath
+    fname = undefined
+    for f in fs.readdirSync mpath
+      if f.toLowerCase() == 'readme.md'
+        fname = path.resolve mpath, f
+        break
+    if not fname?
+      res.status(403).send("Unable to find readme")
+    else
+      text = fs.readFileSync(fname).toString()
+      res.json
+        id: name
+        mpath: mpath
+        content: text
+      
   # FIXME I don't want to use serve-index
-  app.use '/', serveIndex './node_modules'
+  #app.use '/modules', serveIndex './node_modules'
     
-  app.get '/*', (req, res, next) ->
+  app.get '/api/0/modules/*', (req, res, next) ->
     filename = req.params[0]
     filename = path.join 'node_modules', filename
     data = fs.readFileSync(filename).toString()
