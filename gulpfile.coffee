@@ -20,6 +20,7 @@ gulp.task 'indexdev', (callback) ->
   console.log "Created new index.html"
 
 gulp.task 'serve', (callback) ->
+  process.env.NODE_ENV = 'development'
   nodemon
     script: 'index.js'
     ext: 'js coffee'
@@ -30,6 +31,7 @@ gulp.task 'serve', (callback) ->
       ]
   
 gulp.task 'serve:prod', (callback) ->
+  process.env.NODE_ENV = 'production'
   nodemon
     script: 'index.js'
     ext: 'js coffee'
@@ -37,7 +39,7 @@ gulp.task 'serve:prod', (callback) ->
       'src/'
       'webpack-config/'
       'webpack.config.coffee'
-      ]/
+      ]
   
 gulp.task 'webpack:build-prod', (callback) ->
   statopts = 

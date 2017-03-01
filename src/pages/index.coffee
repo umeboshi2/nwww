@@ -7,7 +7,7 @@ webpackManifest = require '../../build/manifest.json'
 UseMiddleware = false or process.env.__DEV_MIDDLEWARE__ is 'true'
 
 get_manifest = (name) ->
-  if true or UseMiddleware
+  if process.env.NODE_ENV == 'development'
     manifest =
       'vendor.js': 'vendor.js'
       'agate.js': 'agate.js'

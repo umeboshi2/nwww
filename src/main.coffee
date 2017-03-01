@@ -63,6 +63,8 @@ main_template = tc.renderable (npmls) ->
 # create express app 
 app = express()
 app.use favicon path.join __dirname, '../assets/favicon.ico'
+app.use '/assets', express.static path.join __dirname, '../assets'
+app.use '/build', express.static path.join __dirname, '../build'
 
 output = ''
 proc = childProcess.spawn 'npm', ['ls', '--long', '--json']
